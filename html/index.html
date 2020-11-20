@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="bootstrap.min.css">
+    <style>
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            margin-top: auto;
+            margin-bottom: auto;
+        }
+
+        #inputBallotBoxId,
+        #inputCounter {
+            width: 3rem;
+        }
+    </style>
+
+    <title>HDSG</title>
+</head>
+<body id="body">
+<div id="login" class="container">
+    <div class="col-lg-6 offset-lg-3">
+        <div class="form-group">
+            <label for="inputUsername">Name</label>
+            <input type="text" class="form-control form-control-lg" id="inputUsername">
+        </div>
+        <div class="form-group">
+            <label for="inputPassword">Passwort</label>
+            <input type="password" class="form-control form-control-lg" id="inputPassword">
+        </div>
+        <div class="alert alert-warning d-none" id="alert-wrong-login">Ungültige Zugangsdaten</div>
+        <button class="btn btn-primary btn-block" id="loginButton">Login</button>
+    </div>
+</div>
+<div id="mainapp" class="container d-none">
+    <div class="col-lg-8 offset-lg-2">
+        <div class="form-inline">
+            <label class="my-1 mr-2" for="inputBallotBoxId">Urne</label>
+            <input class="mr-2" id="inputBallotBoxId"/>
+            <label class="my-1 mr-2" for="inputCounter">Lfd. Nr.</label>
+            <input class="mr-2" id="inputCounter"/>
+            <button id="settingsButton" class="btn btn-secondary">Los!</button>
+        </div>
+        <div class="form-group mt-3">
+            <label for="inputMatrikelnummer">Matrikelnummer</label>
+            <input type="text" class="form-control form-control-lg" id="inputMatrikelnummer"
+                   aria-describedby="matrikelnummerHelp">
+            <small id="matrikelnummerHelp" class="form-text text-muted">Drücke Enter, um zu suchen.</small>
+        </div>
+        <div class="alert alert-info d-none" id="alert-no-result">Kein Ergebnis gefunden!</div>
+        <div class="alert alert-light d-none" id="alert-already-voted">Diese Person hat bereits gewählt!</div>
+        <div>Aktuell:
+            <ul class="list-group">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span id="number0"></span>
+                    <b id="name0"></b>
+                    <span class="d-none" id="checkmark0"></span>
+                    <button class="btn btn-primary" id="markAsHasVotedButton">Als »hat gewählt« markieren</button>
+                </li>
+            </ul>
+        </div>
+        <div>Zuletzt bearbeitet:
+            <ul class="list-group">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span id="number1"></span>
+                    <b id="name1"></b>
+                    <span id="checkmark1"></span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span id="number2"></span>
+                    <b id="name2"></b>
+                    <span id="checkmark2"></span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span id="number3"></span>
+                    <b id="name3"></b>
+                    <span id="checkmark3"></span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span id="number4"></span>
+                    <b id="name4"></b>
+                    <span id="checkmark4"></span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span id="number5"></span>
+                    <b id="name5"></b>
+                    <span id="checkmark5"></span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    const state = {running: false, ballotBoxId: "", counter: -1, latestEntries: [null, null, null, null, null, null]};
+
+    const applyState = () => {
+        document.getElementById('inputBallotBoxId').value = state.ballotBoxId;
+        document.getElementById('inputCounter').value = state.counter;
+        state.latestEntries.forEach((entry, index) => {
+            let number = ' ';
+            let name = ' ';
+            let checkmark = ' ';
+            if (entry !== null) {
+                number = entry.number;
+                name = entry.name;
+                checkmark = entry.checkmark;
+            }
+            document.getElementById('number' + index).innerText = number;
+            document.getElementById('name' + index).innerText = name;
+            document.getElementById('checkmark' + index).innerText = checkmark;
+        });
+    }
+
+    const login = () => {
+        // ToDo actually log in
+        resetLoginError();
+        const users = {"admin": "admin", "user": "password"};
+        const username = document.getElementById('inputUsername').value;
+        const password = document.getElementById('inputPassword').value;
+        if (users.hasOwnProperty(username) && users[username] === password) {
+            document.getElementById('login').classList.add('d-none');
+            document.getElementById('mainapp').classList.remove('d-none');
+        } else {
+            displayLoginError();
+        }
+    }
+
+    const displayLoginError = () => {
+        document.getElementById('alert-wrong-login').classList.remove('d-none');
+    }
+
+    const resetLoginError = () => {
+        document.getElementById('alert-wrong-login').classList.add('d-none');
+    }
+
+
+    const search = (number) => {
+        // ToDo actually search data on the server
+        const data = {
+            "2475974": {number: '2475974', name: 'Gundel Behrends', voted: false},
+            "2062479": {number: '2062479', name: 'Wilbrand Beyer', voted: false},
+            "2727956": {number: '2727956', name: 'Hilderose Prinz', voted: false},
+            "2876533": {number: '2876533', name: 'Annkatrin Mahler', voted: true},
+            "3001168": {number: '3001168', name: 'Hildmar Heinzpeter Elbert Holzwarth', voted: false},
+            "2048320": {number: '2048320', name: 'Dorlies Jonas', voted: true},
+        }
+        if (data.hasOwnProperty(number)) {
+            return data[number];
+        } else {
+            return null;
+        }
+    }
+
+    const readyToScan = () => {
+        let inputElement = document.getElementById('inputMatrikelnummer');
+        inputElement.value = '';
+        inputElement.focus();
+    }
+
+    const readyToMark = () => {
+        let inputElement = document.getElementById('markAsHasVotedButton');
+        inputElement.focus();
+    }
+
+    const displayScaryWarning = () => {
+        document.getElementById('body').classList.add('bg-danger');
+        document.getElementById('alert-already-voted').classList.remove('d-none');
+        document.getElementById('markAsHasVotedButton').disabled = true;
+    }
+
+    const resetScaryWarning = () => {
+        document.getElementById('body').classList.remove('bg-danger');
+        document.getElementById('alert-already-voted').classList.add('d-none');
+        document.getElementById('markAsHasVotedButton').disabled = false;
+    }
+
+    const warnScanOnButton = () => {
+        document.getElementById('body').classList.add('bg-warning');
+        document.getElementById('markAsHasVotedButton').disabled = true;
+        setTimeout(() => {
+            resetWarnScanOnButton();
+        }, 2000);
+    }
+
+    const resetWarnScanOnButton = () => {
+        document.getElementById('body').classList.remove('bg-warning');
+        document.getElementById('markAsHasVotedButton').disabled = false;
+        readyToMark();
+    }
+
+    const warnNotFound = () => {
+        document.getElementById('alert-no-result').classList.remove('d-none');
+    }
+
+    const resetNotFoundWarning = () => {
+        document.getElementById('alert-no-result').classList.add('d-none');
+    }
+
+    const scan = () => {
+        resetNotFoundWarning();
+        let inputElement = document.getElementById('inputMatrikelnummer');
+        const result = search(inputElement.value);
+        if (result === null) {
+            warnNotFound();
+            inputElement.select();
+            return;
+        }
+
+        resetScaryWarning();
+        if (result.voted) {
+            displayScaryWarning();
+        }
+
+        result.checkmark = '❌';
+        if (state.latestEntries[0] === null) {
+            state.latestEntries[0] = result;
+        } else {
+            state.latestEntries.unshift(result);
+        }
+        state.latestEntries.length = 6;
+        inputElement.value = '';
+        applyState();
+        readyToMark();
+    }
+
+    const markAsHasVoted = () => {
+        // ToDo actually mark as has voted on the server and check return value
+        if (state.latestEntries[0] === null) {
+            return;
+        }
+        state.latestEntries[0].checkmark = '✅';
+        state.latestEntries.unshift(null);
+        state.latestEntries.length = 6;
+        state.counter++;
+        applyState();
+        readyToScan();
+    }
+
+    const makeSettingsEditable = () => {
+        document.getElementById('inputBallotBoxId').disabled = false;
+        document.getElementById('inputCounter').disabled = false;
+        document.getElementById('inputMatrikelnummer').disabled = true;
+        document.getElementById('markAsHasVotedButton').disabled = true;
+        document.getElementById('settingsButton').innerText = 'Los!';
+        state.running = false;
+    }
+
+    const saveSettings = () => {
+        const counterElement = document.getElementById('inputCounter');
+        const ballotBoxIdElement = document.getElementById('inputBallotBoxId');
+        if (!counterElement.value || !ballotBoxIdElement.value) {
+            alert('Bitte anständig ausfüllen!');
+            return;
+        }
+        const counterValue = parseInt(counterElement.value);
+        if (counterValue < 0) {
+            alert('Bitte anständig ausfüllen!');
+            return;
+        }
+        state.counter = counterValue;
+        state.ballotBoxId = ballotBoxIdElement.value;
+        ballotBoxIdElement.disabled = true;
+        counterElement.disabled = true;
+        document.getElementById('inputMatrikelnummer').disabled = false;
+        document.getElementById('markAsHasVotedButton').disabled = false;
+        document.getElementById('settingsButton').innerText = 'Bearbeiten';
+        state.running = true;
+        readyToScan();
+    }
+
+    document.getElementById('settingsButton').onclick = () => {
+        if (state.running) {
+            makeSettingsEditable();
+        } else {
+            saveSettings();
+        }
+    }
+
+    document.getElementById('inputMatrikelnummer').onkeypress = (event) => {
+        if (event.key === 'Enter') {
+            scan();
+        }
+    }
+
+    document.getElementById('markAsHasVotedButton').onclick = () => {
+        markAsHasVoted();
+    }
+
+    document.getElementById('markAsHasVotedButton').onkeypress = (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            markAsHasVoted();
+        } else if (event.key === 'Escape') {
+            readyToScan();
+        } else {
+            warnScanOnButton();
+        }
+    }
+
+    document.getElementById('markAsHasVotedButton').onkeydown = (event) => { // Escape does not work with onkeypress
+        if (event.key === 'Escape') {
+            readyToScan();
+        }
+    }
+
+    document.getElementById('inputPassword').onkeypress = (event) => {
+        if (event.key === 'Enter') {
+            login();
+        }
+    }
+
+    document.getElementById('loginButton').onclick = () => {
+        login();
+    }
+
+
+    applyState();
+    makeSettingsEditable();
+</script>
+
+</body>
+</html>
