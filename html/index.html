@@ -106,6 +106,7 @@
 
 <script>
     const state = {running: false, ballotBoxId: "", counter: -1, latestEntries: [null, null, null, null, null, null]};
+    let token = null;
 
     const applyState = () => {
         document.getElementById('inputBallotBoxId').value = state.ballotBoxId;
@@ -126,17 +127,36 @@
     }
 
     const login = () => {
-        // ToDo actually log in
         resetLoginError();
-        const users = {"admin": "admin", "user": "password"};
         const username = document.getElementById('inputUsername').value;
         const password = document.getElementById('inputPassword').value;
-        if (users.hasOwnProperty(username) && users[username] === password) {
-            document.getElementById('login').classList.add('d-none');
-            document.getElementById('mainapp').classList.remove('d-none');
-        } else {
-            displayLoginError();
-        }
+
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('password', password);
+
+        fetch('./token', {method: 'POST', body: formData})
+            .then(response => {
+                if (response.status !== 200) {
+                    displayLoginError();
+                    return false;
+                }
+                return response.json();
+            })
+            .then(response => {
+                token = response['access_token'];
+                displayMainApp();
+            });
+    }
+
+    const displayLoginScreen = () => {
+        document.getElementById('login').classList.remove('d-none');
+        document.getElementById('mainapp').classList.add('d-none');
+    }
+
+    const displayMainApp = () => {
+        document.getElementById('login').classList.add('d-none');
+        document.getElementById('mainapp').classList.remove('d-none');
     }
 
     const displayLoginError = () => {
@@ -149,20 +169,23 @@
 
 
     const search = (number) => {
-        // ToDo actually search data on the server
-        const data = {
-            "2475974": {number: '2475974', name: 'Gundel Behrends', voted: false},
-            "2062479": {number: '2062479', name: 'Wilbrand Beyer', voted: false},
-            "2727956": {number: '2727956', name: 'Hilderose Prinz', voted: false},
-            "2876533": {number: '2876533', name: 'Annkatrin Mahler', voted: true},
-            "3001168": {number: '3001168', name: 'Hildmar Heinzpeter Elbert Holzwarth', voted: false},
-            "2048320": {number: '2048320', name: 'Dorlies Jonas', voted: true},
-        }
-        if (data.hasOwnProperty(number)) {
-            return data[number];
-        } else {
-            return null;
-        }
+        return fetch('./number/' + number, {method: 'GET', headers: {'Authorization': `Bearer ${token}`}})
+            .then(response => {
+                if (response.status === 200) {
+                    return response.json();
+                }
+                if (response.status === 401) {
+                    displayLoginScreen();
+                    return;
+                }
+                throw new Error('Not found');
+            })
+            .then(response => {
+                return response;
+            })
+            .catch(error => {
+                return null;
+            });
     }
 
     const readyToScan = () => {
@@ -210,10 +233,10 @@
         document.getElementById('alert-no-result').classList.add('d-none');
     }
 
-    const scan = () => {
+    const scan = async () => {
         resetNotFoundWarning();
         let inputElement = document.getElementById('inputMatrikelnummer');
-        const result = search(inputElement.value);
+        const result = await search(inputElement.value);
         if (result === null) {
             warnNotFound();
             inputElement.select();
@@ -238,16 +261,39 @@
     }
 
     const markAsHasVoted = () => {
-        // ToDo actually mark as has voted on the server and check return value
         if (state.latestEntries[0] === null) {
             return;
         }
-        state.latestEntries[0].checkmark = '✅';
-        state.latestEntries.unshift(null);
-        state.latestEntries.length = 6;
-        state.counter++;
-        applyState();
-        readyToScan();
+        const number = state.latestEntries[0].number;
+        const ballotBoxId = state.ballotBoxId;
+        const runningNumber = state.counter;
+
+        return fetch('./number/' + number, {
+            method: 'POST',
+            headers: {'Authorization': `Bearer ${token}`},
+            body: JSON.stringify({ballot_box_id: ballotBoxId, running_number: runningNumber})
+        })
+            .then(response => {
+                if (response.status === 200) {
+                    state.latestEntries[0].checkmark = '✅';
+                    state.latestEntries.unshift(null);
+                    state.latestEntries.length = 6;
+                    state.counter++;
+                    applyState();
+                    readyToScan();
+                }
+                if (response.status === 401) {
+                    displayLoginScreen();
+                    return;
+                }
+                if (response.status === 403) {
+                    throw new Error('Already marked as has voted');
+                }
+                alert('Error: Response Status = ' + response.status);
+            })
+            .catch(error => {
+                displayScaryWarning();
+            });
     }
 
     const makeSettingsEditable = () => {
@@ -301,11 +347,9 @@
     }
 
     document.getElementById('markAsHasVotedButton').onkeypress = (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-            markAsHasVoted();
-        } else if (event.key === 'Escape') {
+        if (event.key === 'Escape') {
             readyToScan();
-        } else {
+        } else if (event.key !== 'Enter' && event.key !== ' ') {
             warnScanOnButton();
         }
     }
