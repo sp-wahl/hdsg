@@ -36,6 +36,7 @@ def test_check_number():
         'number': '2456789',
         'name': 'Werner Wusel',
         'voted': False,
+        'notes': None,
         'ballot_box_id': None,
         'running_number': None,
         'timestamp': None,
@@ -72,27 +73,29 @@ def test_mark_as_has_voted_nonexistent_number():
 
 def test_mark_as_has_voted_requires_ballot_box_id():
     response = client.post(f'/number/{TEST_NUMBER}', json={'running_number': 7}, headers=get_auth_header())
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 def test_mark_as_has_voted_requires_running_number():
     response = client.post(f'/number/{TEST_NUMBER}', json={'ballot_box_id': '11'}, headers=get_auth_header())
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 @freeze_time('2021-01-18T10:10:10.123Z')
 def test_check_has_voted_number_returns_additional_info():
     client.post(f'/number/{TEST_NUMBER}', json={'ballot_box_id': '11', 'running_number': 7}, headers=get_auth_header())
-    response = client.get(f'/number/{TEST_NUMBER}')
+    response = client.get(f'/number/{TEST_NUMBER}', headers=get_auth_header())
     assert response.status_code == 200
-    assert response.json() == {
+    json = response.json()
+    assert json == {
         'number': '2456789',
         'name': 'Werner Wusel',
+        'notes': None,
         'voted': True,
         'ballot_box_id': '11',
         'running_number': 7,
-        'timestamp': '2021-01-18T10:10:10.123Z',
-        'user': 'username'
+        'timestamp': '2021-01-18T10:10:10.123000+00:00',
+        'user': 'user'
     }
 
 

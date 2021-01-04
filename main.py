@@ -62,7 +62,7 @@ class HasVotedMetadata(BaseModel):
 
 
 FAKE_DB = {
-    '2475974': Voter(number='2475974', name='Werner Wusel', voted=False),
+    '2456789': Voter(number='2456789', name='Werner Wusel', voted=False),
     '123456789': Voter(number='123456789', name='Greta Weinrich', voted=False, notes='Zweitschrift'),
 }
 
@@ -153,7 +153,6 @@ async def mark_as_voted(number: str, meta: HasVotedMetadata, current_user: User 
             raise HTTPException(status_code=403, detail="Person alredy voted")
         else:
             FAKE_DB[number].voted = True
-            FAKE_DB[number].timestamp = get_current_timestamp()
             FAKE_DB[number].ballot_box_id = meta.ballot_box_id
             FAKE_DB[number].running_number = meta.running_number
             FAKE_DB[number].timestamp = get_current_timestamp()
@@ -162,7 +161,7 @@ async def mark_as_voted(number: str, meta: HasVotedMetadata, current_user: User 
         raise HTTPException(status_code=404, detail="Person not found")
 
 
-def get_current_timestamp():
+def get_current_timestamp() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
 
 
