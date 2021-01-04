@@ -139,14 +139,15 @@
         fetch('./token', {method: 'POST', body: formData})
             .then(response => {
                 if (response.status !== 200) {
-                    displayLoginError();
-                    return false;
+                    return Promise.reject('Login failed');
                 }
                 return response.json();
             })
             .then(response => {
                 token = response['access_token'];
                 displayMainApp();
+            }, () => {
+                displayLoginError();
             });
     }
 
