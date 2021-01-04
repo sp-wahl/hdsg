@@ -49,6 +49,7 @@ class Voter(BaseModel):
     number: str
     name: str
     voted: bool
+    notes: Optional[str] = None
     ballot_box_id: Optional[str] = None
     running_number: Optional[int] = None
     timestamp: Optional[str] = None
@@ -61,7 +62,8 @@ class HasVotedMetadata(BaseModel):
 
 
 FAKE_DB = {
-    '2456789': Voter(number='2456789', name='Werner Wusel', voted=False)
+    '2475974': Voter(number='2475974', name='Werner Wusel', voted=False),
+    '123456789': Voter(number='123456789', name='Greta Weinrich', voted=False, notes='Zweitschrift'),
 }
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

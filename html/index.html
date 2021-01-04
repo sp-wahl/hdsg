@@ -62,6 +62,7 @@
         </div>
         <div class="alert alert-info d-none" id="alert-no-result">Kein Ergebnis gefunden!</div>
         <div class="alert alert-light d-none" id="alert-already-voted">Diese Person hat bereits gewählt!</div>
+        <div class="alert alert-info d-none" id="alert-notes">Obacht: <span id="notes">XXX</span></div>
         <div>Aktuell:
             <ul class="list-group">
                 <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -205,9 +206,25 @@
         document.getElementById('markAsHasVotedButton').disabled = true;
     }
 
+    const displayNotesWarning = (message) => {
+        document.getElementById('body').classList.add('bg-warning');
+        document.getElementById('notes').innerText = message;
+        document.getElementById('alert-notes').classList.remove('d-none');
+        document.getElementById('markAsHasVotedButton').disabled = true;
+        setTimeout(() => {
+            document.getElementById('markAsHasVotedButton').disabled = false
+        }, 5000);
+    }
+
     const resetScaryWarning = () => {
         document.getElementById('body').classList.remove('bg-danger');
         document.getElementById('alert-already-voted').classList.add('d-none');
+        document.getElementById('markAsHasVotedButton').disabled = false;
+    }
+
+    const resetNotesWarning = () => {
+        document.getElementById('body').classList.remove('bg-warning');
+        document.getElementById('alert-notes').classList.add('d-none');
         document.getElementById('markAsHasVotedButton').disabled = false;
     }
 
@@ -244,8 +261,11 @@
         }
 
         resetScaryWarning();
+        resetNotesWarning();
         if (result.voted) {
             displayScaryWarning();
+        } else if (result.notes) {
+            displayNotesWarning(result.notes);
         }
 
         result.checkmark = '❌';
@@ -280,9 +300,11 @@
                     state.latestEntries.length = 6;
                     state.counter++;
                     applyState();
+                    resetNotesWarning();
                     readyToScan();
                 }
                 if (response.status === 401) {
+                    resetNotesWarning();
                     displayLoginScreen();
                     return;
                 }
