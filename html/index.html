@@ -26,6 +26,10 @@
         #inputCounter {
             width: 3rem;
         }
+
+        #notes, .lead {
+            font-weight: bold;
+        }
     </style>
 
     <title>HDSG</title>
@@ -61,7 +65,19 @@
             <small id="matrikelnummerHelp" class="form-text text-muted">Drücke Enter, um zu suchen.</small>
         </div>
         <div class="alert alert-info d-none" id="alert-no-result">Kein Ergebnis gefunden!</div>
-        <div class="alert alert-light d-none" id="alert-already-voted">Diese Person hat bereits gewählt!</div>
+        <div class="alert alert-light d-none" id="alert-already-voted">
+            <p class="lead">Diese Person hat bereits gewählt! 🙀</p>
+            <dl>
+                <dt>Urne:</dt>
+                <dd id="already-voted-ballot-box"></dd>
+                <dt>Lfd. Nr.:</dt>
+                <dd id="already-voted-running-number"></dd>
+                <dt>Timestamp:</dt>
+                <dd id="already-voted-timestamp"></dd>
+                <dt>User:</dt>
+                <dd id="already-voted-user"></dd>
+            </dl>
+        </div>
         <div class="alert alert-info d-none" id="alert-notes">Obacht: <span id="notes">XXX</span></div>
         <div>Aktuell:
             <ul class="list-group">
@@ -201,8 +217,12 @@
         inputElement.focus();
     }
 
-    const displayScaryWarning = () => {
+    const displayScaryWarning = (result) => {
         document.getElementById('body').classList.add('bg-danger');
+        document.getElementById('already-voted-ballot-box').innerText = result.ballot_box_id;
+        document.getElementById('already-voted-running-number').innerText = result.running_number;
+        document.getElementById('already-voted-timestamp').innerText = result.timestamp;
+        document.getElementById('already-voted-user').innerText = result.user;
         document.getElementById('alert-already-voted').classList.remove('d-none');
         document.getElementById('markAsHasVotedButton').disabled = true;
     }
@@ -264,7 +284,7 @@
         resetScaryWarning();
         resetNotesWarning();
         if (result.voted) {
-            displayScaryWarning();
+            displayScaryWarning(result);
         } else if (result.notes) {
             displayNotesWarning(result.notes);
         }
@@ -311,12 +331,21 @@
                     return;
                 }
                 if (response.status === 403) {
-                    throw new Error('Already marked as has voted');
+                    return Promise.reject('Already marked as has voted');
                 }
                 alert('Error: Response Status = ' + response.status);
             })
-            .catch(error => {
-                displayScaryWarning();
+            .catch(async () =>  {
+                const result = await search(number);
+                if (result === null) {
+                    warnNotFound();
+                    return;
+                }
+                resetScaryWarning();
+                resetNotesWarning();
+                if (result.voted) {
+                    displayScaryWarning(result);
+                }
             });
     }
 
