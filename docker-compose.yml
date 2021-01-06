@@ -1,0 +1,30 @@
+version: "3.7"
+
+volumes:
+  mariadb-data:
+
+services:
+  mariadb: 
+    image: mariadb:latest
+    container_name: mariadb
+    restart: always
+    ports:
+      - 3306:3306
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=yes
+      - MYSQL_DATABASE=${SQL_DB}
+      - MYSQL_USER=${SQL_USER}
+      - MYSQL_PASSWORD=${SQL_PW}
+
+  hdsg:
+    build: .
+    ports:
+     - "80:80" 
+    container_name: hdsg
+    restart: always
+    depends_on:
+      - mariadb
+    environment:
+      - HDSG_DB_CONNECTION_STRING=mysql+mysqldb://${SQL_USER}:${SQL_PW}@${SQL_HOST}/${SQL_DB}
