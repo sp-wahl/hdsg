@@ -126,9 +126,6 @@ async def mark_as_voted(
         if voter := session.query(Voter).filter(Voter.number).first():
             if voter.voted:
                 raise HTTPException(status_code=403, detail="Person already voted")
-            elif voter.notes:
-                # TODO: how should we handle this? (this is certainly wrong)
-                raise HTTPException(status_code=500, detail="Person has notes attached:\n" + voter.notes)
             else:
                 voter.voted = True
                 voter.ballot_box_id = meta.ballot_box_id
