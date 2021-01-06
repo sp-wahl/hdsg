@@ -1,12 +1,62 @@
+from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
 from freezegun import freeze_time
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+from sqlalchemy_utils import database_exists, create_database
 
+from database import Base, User, get_password_hash, Voter
 from main import app
 
 client = TestClient(app)
 
 TEST_NUMBER = '2456789'
 NONEXISTENT_NUMBER = '0000000'
+
+
+class DBTestHelper:
+    def __init__(self, tmppath:Path):
+        self.connection_str = f'sqlite:///{tmppath.absolute()}/test.db'
+        self._session = None
+
+    def __enter__(self):
+        if self._session:
+            return self._session
+        do_init = False
+        if not database_exists(self.connection_str):
+            do_init = True
+            create_database(self.connection_str)
+        engine = create_engine(self.connection_str)
+
+        Base.metadata.create_all(engine)
+
+        self._session = Session(engine)
+
+        if do_init:
+            user = User()
+            user.username = "user"
+            user.hashed_password = get_password_hash("password")
+            self._session.add_all([user])
+
+            voter = Voter()
+            voter.number = '2456789'
+            voter.name = 'Werner Wusel'
+            voter.voted = False
+            self._session.add_all([voter])
+
+            self._session.commit()
+        return self._session
+
+    def __exit__(self, type, value, traceback):
+        self._session.close()
+        self._session = None
+
+
+@pytest.fixture(autouse=True)
+def fake_db(monkeypatch, tmp_path):
+    monkeypatch.setattr('main.DBHelper', lambda: DBTestHelper(tmp_path))
 
 
 def get_token():
@@ -40,7 +90,7 @@ def test_check_number():
         'ballot_box_id': None,
         'running_number': None,
         'timestamp': None,
-        'user': None,
+        'user_id': None,
     }
 
 
@@ -95,7 +145,7 @@ def test_check_has_voted_number_returns_additional_info():
         'ballot_box_id': '11',
         'running_number': 7,
         'timestamp': '2021-01-18T10:10:10.123000+00:00',
-        'user': 'user'
+        'user_id': 'user'
     }
 
 
