@@ -1,4 +1,8 @@
 .idea
+.env
+.vscode
+Pipfile
+Pipfile.lock
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
