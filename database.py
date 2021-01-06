@@ -19,10 +19,6 @@ def get_password_hash(password):
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     return pwd_context.hash(password)
 
-class HasVotedMetadata(BaseModel):
-    ballot_box_id: str
-    running_number: int
-
 
 Base = declarative_base()
 

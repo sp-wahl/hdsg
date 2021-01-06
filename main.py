@@ -1,8 +1,7 @@
 #! /usr/bin/env python3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
-import os
+from typing import Optional, Union
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Depends
@@ -13,7 +12,7 @@ from starlette import status
 from starlette.responses import HTMLResponse, FileResponse
 
 from config import Config
-from database import DBHelper, User, Voter, get_password_hash, verify_password, HasVotedMetadata
+from database import DBHelper, User, Voter, verify_password
 
 
 class Token(BaseModel):
@@ -25,12 +24,28 @@ class TokenData(BaseModel):
     username: Optional[str] = None
 
 
+class HasVotedMetadata(BaseModel):
+    ballot_box_id: str
+    running_number: int
+
+
+class VoterDict(BaseModel):
+    number: str
+    name: str
+    voted: bool
+    notes: Optional[str]
+    ballot_box_id: Optional[str] = None
+    running_number: Optional[int] = None
+    timestamp: Optional[str] = None
+    user_id: Optional[str] = None
+
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 app = FastAPI()
 
 
-def get_user(username: str):
+def get_user(username: str) -> Optional[User]:
     with DBHelper() as session:
         # first is fine because of unique
         user = session.query(User).filter(User.username == username).first()
@@ -38,7 +53,7 @@ def get_user(username: str):
             return user
 
 
-def authenticate_user(username: str, password: str):
+def authenticate_user(username: str, password: str) -> Union[User, bool]:
     user = get_user(username)
     if not user:
         return False
@@ -83,14 +98,12 @@ async def root():
     return (Path(__file__).parent / "./html/index.html").read_text()
 
 
-@app.get(
-    "/bootstrap.min.css",
-)
+@app.get("/bootstrap.min.css")
 async def css():
     return FileResponse(Path(__file__).parent / "html/bootstrap.min.css")
 
 
-@app.get("/number/{number}", response_model=dict)
+@app.get("/number/{number}", response_model=VoterDict)
 async def check_number(number: str, current_user: User = Depends(get_current_user)):
     with DBHelper() as session:
         # first is fine because of unique
