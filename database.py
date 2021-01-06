@@ -1,14 +1,14 @@
-from pydantic import BaseModel
-from sqlalchemy import Table, Column, Integer, ForeignKey, String, Boolean, Enum, Float, DateTime
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
-from sqlalchemy_utils import create_database, database_exists
 from passlib.context import CryptContext
+from pydantic import BaseModel
+from sqlalchemy import Column, Integer, ForeignKey, String, Boolean, DateTime
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import relationship
+from sqlalchemy_utils import create_database, database_exists
 
 from config import Config
+
 
 def verify_password(plain_password, hashed_password):
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -26,6 +26,7 @@ class HasVotedMetadata(BaseModel):
 
 Base = declarative_base()
 
+
 class User(Base):
     __tablename__ = "users"
     username = Column(String(200), unique=True, primary_key=True)
@@ -40,7 +41,7 @@ class Voter(Base):
     notes = Column(String(500))
     ballot_box_id = Column(String(100))
     running_number = Column(Integer, default=None)
-    timestamp = Column(DateTime, default=None)
+    timestamp = Column(String(100), default=None)
     user_id = Column(String(200), ForeignKey("users.username", ondelete="SET NULL"))
     user = relationship("User")
 

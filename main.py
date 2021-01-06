@@ -120,7 +120,7 @@ async def mark_as_voted(
                 voter.voted = True
                 voter.ballot_box_id = meta.ballot_box_id
                 voter.running_number = meta.running_number
-                voter.timestamp = datetime.now(tz=timezone.utc)
+                voter.timestamp = get_current_timestamp()
                 voter.user = user
                 session.commit()
                 return True
@@ -128,6 +128,9 @@ async def mark_as_voted(
             raise HTTPException(status_code=404, detail="Person not found")
     raise HTTPException(status_code=500, detail="no db connection")
 
+
+def get_current_timestamp() -> str:
+    return datetime.now(tz=timezone.utc).isoformat()
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
