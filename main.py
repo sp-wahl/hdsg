@@ -47,8 +47,7 @@ app = FastAPI()
 
 def get_user(username: str) -> Optional[User]:
     with DBHelper() as session:
-        # first is fine because of unique
-        user = session.query(User).filter(User.username == username).first()
+        user = session.query(User).get(username)
         if user:
             return user
 
@@ -106,8 +105,7 @@ async def css():
 @app.get("/number/{number}", response_model=VoterDict)
 async def check_number(number: str, current_user: User = Depends(get_current_user)):
     with DBHelper() as session:
-        # first is fine because of unique
-        if voter := session.query(Voter).filter(Voter.number).first():
+        if voter := session.query(Voter).get(number):
             return voter.__dict__
         else:
             raise HTTPException(status_code=404, detail="Person not found")
@@ -119,11 +117,10 @@ async def mark_as_voted(
     number: str, meta: HasVotedMetadata, current_user: User = Depends(get_current_user)
 ):
     with DBHelper() as session:
-        user = session.query(User).filter(User.username == current_user.username).first()
+        user = session.query(User).get(current_user.username)
         if not user:
             raise HTTPException(status_code=403, detail="User not found")
-        # first is fine because of unique
-        if voter := session.query(Voter).filter(Voter.number).first():
+        if voter := session.query(Voter).get(number):
             if voter.voted:
                 raise HTTPException(status_code=403, detail="Person already voted")
             else:
@@ -141,6 +138,7 @@ async def mark_as_voted(
 
 def get_current_timestamp() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
+
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
