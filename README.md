@@ -9,6 +9,12 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Running tests
+
+```
+PYTHONPATH=. pytest
+```
+
 ## Running (development)
 
 ```
