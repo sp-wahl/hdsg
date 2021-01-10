@@ -1,40 +1,42 @@
+#! /usr/bin/env python3
+
 import argparse
 import csv
 
-from database import DBHelper, Voter, User, get_password_hash, verify_password
+from database import DBHelper, Voter, User, get_password_hash
 
 
 def import_users(filename: str):
     users = []
     with open(filename) as csvfile:
         reader = csv.DictReader(csvfile)
-        for i, row in enumerate(reader):
-            if i % 100:
-                print(f"{i}/{len(reader)}", end="")
+        for row in reader:
             user = User()
             print(row)
             user.username = row["username"]
             user.hashed_password = get_password_hash(row["password"])
             users.append(user)
     with DBHelper() as session:
+        print(f'Adding {len(users)} users…')
         session.add_all(users)
         session.commit()
+        print(f'Done!')
 
 
 def import_voters(filename: str):
     voters = []
     with open(filename) as csvfile:
         reader = csv.DictReader(csvfile, delimiter="\t")
-        for i, row in enumerate(reader):
-            if i % 100:
-                print(f"{i}/{len(reader)}", end="")
+        for row in reader:
             voter = Voter()
             voter.number = row["Matrikelnummer"]
-            voter.name = f'{row["Nachname"]}, {row["Vorname"]}'
+            voter.name = f'{row["Vorname"]} {row["Nachname"]}'
             voters.append(voter)
     with DBHelper() as session:
+        print(f'Adding {len(voters)} voters…')
         session.add_all(voters)
         session.commit()
+        print(f'Done!')
 
 
 if __name__ == "__main__":
@@ -57,4 +59,4 @@ if __name__ == "__main__":
     elif args.command == "import_voter":
         import_voters(args.filename)
     else:
-        print("not a valid command")
+        parser.print_help()
