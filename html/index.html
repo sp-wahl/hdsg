@@ -124,6 +124,40 @@
 <script>
     const state = {running: false, ballotBoxId: "", counter: -1, latestEntries: [null, null, null, null, null, null]};
     let token = null;
+    let demoMode = false;
+
+    const DEMO = {
+        '11111': {
+            'number': '11111',
+            'name': 'Tim Test',
+            'voted': false,
+            'notes': null,
+            'ballot_box_id': null,
+            'running_number': null,
+            'timestamp': null,
+            'user_id': null,
+        },
+        '22222': {
+            'number': '22222',
+            'name': 'Thea Test',
+            'voted': false,
+            'notes': 'Zweitschrift',
+            'ballot_box_id': null,
+            'running_number': null,
+            'timestamp': null,
+            'user_id': null,
+        },
+        '33333': {
+            'number': '33333',
+            'name': 'Traute Test',
+            'voted': true,
+            'notes': null,
+            'ballot_box_id': '3',
+            'running_number': '156',
+            'timestamp': '20210119T11:56:47.845796+00:00',
+            'user_id': 'test_11',
+        },
+    };
 
     const applyState = () => {
         document.getElementById('inputBallotBoxId').value = state.ballotBoxId;
@@ -151,6 +185,12 @@
         const formData = new FormData();
         formData.append('username', username);
         formData.append('password', password);
+
+        if (username === 'demo' && password === 'demo') {
+            demoMode = true;
+            displayMainApp();
+            return;
+        }
 
         fetch('./token', {method: 'POST', body: formData})
             .then(response => {
@@ -185,25 +225,56 @@
         document.getElementById('alert-wrong-login').classList.add('d-none');
     }
 
+    const demoSearch = (number) => {
+        if (DEMO.hasOwnProperty(number)) {
+            return DEMO[number];
+        }
+        return null;
+    };
+
+    const demoMarkAsHasVoted = (number) => {
+        if (['11111', '22222'].includes(number)) {
+            state.latestEntries[0].checkmark = '✅';
+            state.latestEntries.unshift(null);
+            state.latestEntries.length = 6;
+            state.counter++;
+            applyState();
+            resetNotesWarning();
+            readyToScan();
+            return;
+        }
+        if (number === '33333') {
+            const result = demoSearch(number);
+            resetScaryWarning();
+            resetNotesWarning();
+            if (result.voted) {
+                displayScaryWarning(result);
+            }
+        }
+    };
 
     const search = (number) => {
-        return fetch('./number/' + number, {method: 'GET', headers: {'Authorization': `Bearer ${token}`}})
-            .then(response => {
-                if (response.status === 200) {
-                    return response.json();
-                }
-                if (response.status === 401) {
-                    displayLoginScreen();
-                    return;
-                }
-                throw new Error('Not found');
-            })
-            .then(response => {
-                return response;
-            })
-            .catch(error => {
-                return null;
-            });
+        if (demoMode) {
+            return demoSearch(number);
+        } else {
+            return fetch('./number/' + number, {method: 'GET', headers: {'Authorization': `Bearer ${token}`}})
+                .then(response => {
+                    if (response.status === 200) {
+                        return response.json();
+                    }
+                    if (response.status === 401) {
+                        displayLoginScreen();
+                        return;
+                    }
+                    throw new Error('Not found');
+                })
+                .then(response => {
+                    return response;
+                })
+                .catch(error => {
+                    return null;
+                });
+        }
     }
 
     const readyToScan = () => {
@@ -309,44 +380,48 @@
         const ballotBoxId = state.ballotBoxId;
         const runningNumber = state.counter;
 
-        return fetch('./number/' + number, {
-            method: 'POST',
-            headers: {'Authorization': `Bearer ${token}`},
-            body: JSON.stringify({ballot_box_id: ballotBoxId, running_number: runningNumber})
-        })
-            .then(response => {
-                if (response.status === 200) {
-                    state.latestEntries[0].checkmark = '✅';
-                    state.latestEntries.unshift(null);
-                    state.latestEntries.length = 6;
-                    state.counter++;
-                    applyState();
-                    resetNotesWarning();
-                    readyToScan();
-                    return;
-                }
-                if (response.status === 401) {
-                    resetNotesWarning();
-                    displayLoginScreen();
-                    return;
-                }
-                if (response.status === 403) {
-                    return Promise.reject('Already marked as has voted');
-                }
-                alert('Error: Response Status = ' + response.status);
+        if (demoMode) {
+            demoMarkAsHasVoted(number);
+        } else {
+            return fetch('./number/' + number, {
+                method: 'POST',
+                headers: {'Authorization': `Bearer ${token}`},
+                body: JSON.stringify({ballot_box_id: ballotBoxId, running_number: runningNumber})
             })
-            .catch(async () =>  {
-                const result = await search(number);
-                if (result === null) {
-                    warnNotFound();
-                    return;
-                }
-                resetScaryWarning();
-                resetNotesWarning();
-                if (result.voted) {
-                    displayScaryWarning(result);
-                }
-            });
+                .then(response => {
+                    if (response.status === 200) {
+                        state.latestEntries[0].checkmark = '✅';
+                        state.latestEntries.unshift(null);
+                        state.latestEntries.length = 6;
+                        state.counter++;
+                        applyState();
+                        resetNotesWarning();
+                        readyToScan();
+                        return;
+                    }
+                    if (response.status === 401) {
+                        resetNotesWarning();
+                        displayLoginScreen();
+                        return;
+                    }
+                    if (response.status === 403) {
+                        return Promise.reject('Already marked as has voted');
+                    }
+                    alert('Error: Response Status = ' + response.status);
+                })
+                .catch(async () => {
+                    const result = await search(number);
+                    if (result === null) {
+                        warnNotFound();
+                        return;
+                    }
+                    resetScaryWarning();
+                    resetNotesWarning();
+                    if (result.voted) {
+                        displayScaryWarning(result);
+                    }
+                });
+        }
     }
 
     const makeSettingsEditable = () => {
