@@ -156,5 +156,16 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@app.get("/stats", response_model=dict)
+async def stats(current_user: User = Depends(get_current_user)):
+    with DBHelper() as session:
+        results = session.execute('''SELECT SUBSTR(timestamp, 1, 13) as h, COUNT(*) as c 
+                                     FROM voters 
+                                     WHERE voted=1 
+                                     GROUP BY h 
+                                     ORDER BY h ASC''').fetchall()
+        return {'marked_as_voted': {result['h']: result['c'] for result in results}}
+
+
 if __name__ == "__main__":
     uvicorn.run(app)

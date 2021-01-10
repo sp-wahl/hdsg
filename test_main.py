@@ -149,6 +149,24 @@ def test_check_has_voted_number_returns_additional_info():
     }
 
 
+@freeze_time('2021-01-18T10:10:10.123Z')
+def test_stats():
+    client.post(f'/number/{TEST_NUMBER}', json={'ballot_box_id': '11', 'running_number': 7}, headers=get_auth_header())
+    response = client.get(f'/stats', headers=get_auth_header())
+    assert response.status_code == 200
+    json = response.json()
+    assert json == {
+        'marked_as_voted': {
+            '2021-01-18T10': 1
+        }
+    }
+
+
+def test_stats_need_authentication():
+    response = client.get(f'/stats')
+    assert response.status_code == 401
+
+
 def test_marking_as_has_voted_twice_fails():
     auth_header = get_auth_header()
     client.post(f'/number/{TEST_NUMBER}', json={'ballot_box_id': '11', 'running_number': 7}, headers=auth_header)
